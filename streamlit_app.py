@@ -183,69 +183,27 @@ with col_info:
 
 
 # ---------------- ----- GRAFICO ----- ----------------
-st.markdown("### 📈 ----- GRAFICO -----")
+st.markdown("### 📊 Distribución de notas del curso")
 
 import numpy as np
 import pandas as pd
+import matplotlib.pyplot as plt
 
-# (1) Distribución de notas simuladas vs. media y tu valor (sin plotly)
-rng = np.random.default_rng(7)
-muestras = 400
+# Ejemplo: generamos notas ficticias de 100 alumnos
+np.random.seed(42)
+notas_curso = np.clip(np.random.normal(loc=6, scale=1.5, size=100), 0, 10)
 
-# Simulamos alrededor de los valores actuales
-asis_sim = np.clip(asistidas + rng.integers(-4, 5, size=muestras), 0, TOTAL_CLASES)
-rate_sim = asis_sim / TOTAL_CLASES
-tests_sim = np.clip(tests_completos + rng.integers(-2, 3, size=muestras), 0, 5)
-niveles = ["Nula", "Media", "Alta", "Muy alta"]
-p_idx = niveles.index(participacion)
-choices = [niveles[np.clip(p_idx + d, 0, len(niveles)-1)] for d in rng.integers(-1, 2, size=muestras)]
+# Histograma
+fig, ax = plt.subplots(figsize=(7,4))
+ax.hist(notas_curso, bins=10, color="#1f77b4", edgecolor="white", alpha=0.85)
+ax.set_title("Distribución de notas (N=100)", fontsize=14, fontweight="bold")
+ax.set_xlabel("Nota")
+ax.set_ylabel("Cantidad de alumnos")
+ax.axvline(notas_curso.mean(), color="red", linestyle="--", label=f"Media = {notas_curso.mean():.1f}")
+ax.legend()
 
-def predecir_nota(asistencia_rate: float, participacion: str, tests: int) -> float:
-    if asistencia_rate >= 0.9:   base = 8.5
-    elif asistencia_rate >= 0.8: base = 7.5
-    elif asistencia_rate >= 0.7: base = 6.5
-    elif asistencia_rate >= 0.6: base = 5.5
-    elif asistencia_rate >= 0.5: base = 4.5
-    else:                        base = 3.5
+st.pyplot(fig)
 
-    if participacion == "Muy alta":   bonus_part = 1.5
-    elif participacion == "Alta":     bonus_part = 1.0
-    elif participacion == "Media":    bonus_part = 0.5
-    else:                             bonus_part = 0.0
-
-    bonus_tests = tests * 0.3
-    return float(max(0.0, min(10.0, base + bonus_part + bonus_tests)))
-
-notas_sim = np.array([predecir_nota(rate_sim[i], choices[i], int(tests_sim[i])) for i in range(muestras)])
-media = float(notas_sim.mean())
-
-# Histograma con numpy + st.bar_chart
-bins = np.linspace(0, 10, 21)  # 20 bins
-counts, edges = np.histogram(notas_sim, bins=bins)
-mids = 0.5 * (edges[:-1] + edges[1:])
-
-df_hist = pd.DataFrame({"Nota": mids, "Frecuencia": counts}).set_index("Nota")
-st.subheader("Distribución de notas simuladas")
-st.bar_chart(df_hist)  # Streamlit interno, sin dependencias
-
-# Mostramos media y tu nota como métricas debajo del histograma
-mcol1, mcol2 = st.columns(2)
-with mcol1:
-    st.metric("Media simulada", f"{media:.1f}")
-with mcol2:
-    st.metric("Tu nota", f"{nota_pred:.1f}")
-
-st.divider()
-
-# (2) Barras de escenarios (¿qué pasaría si...?) sin plotly
-escenarios = [
-    ("Actual", nota_pred),
-    ("Completa 5 tests", predecir_nota(asistencia_rate, participacion, 5)),
-    ("Asistencia ≥80%", predecir_nota(max(asistidas, 13)/TOTAL_CLASES, participacion, tests_completos)),
-    (f"Participación → {niveles[min(p_idx+1, len(niveles)-1)]}",
-     predecir_nota(asistencia_rate, niveles[min(p_idx+1, len(niveles)-1)], tests_completos)),
-]
-df_esc = pd.DataFrame(escenarios, columns=["Escenario", "Nota"]).set_index("Escenario")
 
 st.subheader("Comparativa de escenarios (¿qué pasaría si...?)")
 st.bar_chart(df_esc)  # Streamlit interno
