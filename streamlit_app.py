@@ -187,13 +187,12 @@ st.markdown("### 📈 ----- GRAFICO -----")
 
 import numpy as np
 import pandas as pd
-import plotly.express as px
 
-# (1) Distribución de notas simuladas y comparación vs. media y tu valor
+# (1) Distribución de notas simuladas vs. media y tu valor (sin plotly)
 rng = np.random.default_rng(7)
 muestras = 400
 
-# Variaciones alrededor de los valores actuales
+# Simulamos alrededor de los valores actuales
 asis_sim = np.clip(asistidas + rng.integers(-4, 5, size=muestras), 0, TOTAL_CLASES)
 rate_sim = asis_sim / TOTAL_CLASES
 tests_sim = np.clip(tests_completos + rng.integers(-2, 3, size=muestras), 0, 5)
@@ -202,27 +201,17 @@ p_idx = niveles.index(participacion)
 choices = [niveles[np.clip(p_idx + d, 0, len(niveles)-1)] for d in rng.integers(-1, 2, size=muestras)]
 
 def predecir_nota(asistencia_rate: float, participacion: str, tests: int) -> float:
-    if asistencia_rate >= 0.9:
-        base = 8.5
-    elif asistencia_rate >= 0.8:
-        base = 7.5
-    elif asistencia_rate >= 0.7:
-        base = 6.5
-    elif asistencia_rate >= 0.6:
-        base = 5.5
-    elif asistencia_rate >= 0.5:
-        base = 4.5
-    else:
-        base = 3.5
+    if asistencia_rate >= 0.9:   base = 8.5
+    elif asistencia_rate >= 0.8: base = 7.5
+    elif asistencia_rate >= 0.7: base = 6.5
+    elif asistencia_rate >= 0.6: base = 5.5
+    elif asistencia_rate >= 0.5: base = 4.5
+    else:                        base = 3.5
 
-    if participacion == "Muy alta":
-        bonus_part = 1.5
-    elif participacion == "Alta":
-        bonus_part = 1.0
-    elif participacion == "Media":
-        bonus_part = 0.5
-    else:
-        bonus_part = 0.0
+    if participacion == "Muy alta":   bonus_part = 1.5
+    elif participacion == "Alta":     bonus_part = 1.0
+    elif participacion == "Media":    bonus_part = 0.5
+    else:                             bonus_part = 0.0
 
     bonus_tests = tests * 0.3
     return float(max(0.0, min(10.0, base + bonus_part + bonus_tests)))
@@ -230,26 +219,34 @@ def predecir_nota(asistencia_rate: float, participacion: str, tests: int) -> flo
 notas_sim = np.array([predecir_nota(rate_sim[i], choices[i], int(tests_sim[i])) for i in range(muestras)])
 media = float(notas_sim.mean())
 
-fig1 = px.histogram(
-    x=notas_sim, nbins=20,
-    title="Distribución de notas simuladas",
-    labels={"x": "Nota"},
-    opacity=0.85
-)
-fig1.add_vline(x=media, line_dash="dash", annotation_text=f"Media = {media:.1f}")
-fig1.add_vline(x=nota_pred, line_color="green", annotation_text=f"Tu nota = {nota_pred:.1f}")
-st.plotly_chart(fig1, use_container_width=True)
+# Histograma con numpy + st.bar_chart
+bins = np.linspace(0, 10, 21)  # 20 bins
+counts, edges = np.histogram(notas_sim, bins=bins)
+mids = 0.5 * (edges[:-1] + edges[1:])
 
-# (2) Comparativa de escenarios potenciales (qué pasaría si...)
+df_hist = pd.DataFrame({"Nota": mids, "Frecuencia": counts}).set_index("Nota")
+st.subheader("Distribución de notas simuladas")
+st.bar_chart(df_hist)  # Streamlit interno, sin dependencias
+
+# Mostramos media y tu nota como métricas debajo del histograma
+mcol1, mcol2 = st.columns(2)
+with mcol1:
+    st.metric("Media simulada", f"{media:.1f}")
+with mcol2:
+    st.metric("Tu nota", f"{nota_pred:.1f}")
+
+st.divider()
+
+# (2) Barras de escenarios (¿qué pasaría si...?) sin plotly
 escenarios = [
     ("Actual", nota_pred),
     ("Completa 5 tests", predecir_nota(asistencia_rate, participacion, 5)),
     ("Asistencia ≥80%", predecir_nota(max(asistidas, 13)/TOTAL_CLASES, participacion, tests_completos)),
-    (f"Participación → {niveles[min(p_idx+1, len(niveles)-1)]}", predecir_nota(asistencia_rate, niveles[min(p_idx+1, len(niveles)-1)], tests_completos))
+    (f"Participación → {niveles[min(p_idx+1, len(niveles)-1)]}",
+     predecir_nota(asistencia_rate, niveles[min(p_idx+1, len(niveles)-1)], tests_completos)),
 ]
+df_esc = pd.DataFrame(escenarios, columns=["Escenario", "Nota"]).set_index("Escenario")
 
-df_esc = pd.DataFrame(escenarios, columns=["Escenario", "Nota"])
-fig2 = px.bar(df_esc, x="Escenario", y="Nota", title="Comparativa de escenarios (¿qué pasaría si...?)",
-              range_y=[0,10], text="Nota")
-fig2.update_traces(texttemplate='%{text:.1f}', textposition='outside')
-st.plotly_chart(fig2, use_container_width=True)
+st.subheader("Comparativa de escenarios (¿qué pasaría si...?)")
+st.bar_chart(df_esc)  # Streamlit interno
+
