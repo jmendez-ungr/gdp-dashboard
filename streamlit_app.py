@@ -1,20 +1,25 @@
 # app_streamlit_ugr_notas_if.py
 # -------------------------------------------------------------
-# Streamlit demo (sin ML): Predicción simple de nota (0-10)
-# basado en asistencia y participación con reglas IF.
+# Streamlit (sin ML): Predicción simple de nota (0-10)
+# Variables:
+#   - Total de clases (FIJO = 16)
+#   - Cantidad de tests completos (0 a 5)
+#   - Clases asistidas (0 a 16)
+#   - Participación (Nula, Media, Alta, Muy alta)
+# Lógica interna con reglas IF (NO se muestran en UI).
 # Autor: ChatGPT para Joa — 2025
 # -------------------------------------------------------------
 
 import streamlit as st
 
-# ---------- CONFIG ----------
+# ---------------- CONFIG ----------------
 st.set_page_config(
-    page_title="UGR • Predicción de Nota (Reglas IF)",
+    page_title="UGR • Predicción de Nota (Validación)",
     page_icon="🎓",
     layout="wide",
 )
 
-# ---------- ESTILO SENCILLO ----------
+# ---------------- ESTILO ----------------
 st.markdown("""
 <style>
   .metric-card {
@@ -30,41 +35,84 @@ st.markdown("""
   .bad  { background:#FEE2E2; color:#991B1B; border-color:#FCA5A5; }
   .big-number { font-size: 3rem; font-weight: 800; line-height: 1; }
   .muted { color:#6B7280; }
+  .section { margin-top: .5rem; }
+  h1, h2, h3 { letter-spacing: -0.02em; }
+  .kpi { font-size: .95rem; color:#374151; }
+  .stProgress > div > div > div { background-color: #10B981; }
 </style>
 """, unsafe_allow_html=True)
 
-# ---------- ENCABEZADO ----------
+# ---------------- ENCABEZADO ----------------
 c1, c2 = st.columns([3, 2])
 with c1:
-    st.markdown("## 🎓 Predicción de Nota — UGR (Reglas IF)")
-    st.markdown("<span class='muted'>Validación simple: asistencia + participación → nota (0–10)</span>", unsafe_allow_html=True)
+    st.markdown("## 🎓 Predicción de Nota — UGR (Validación)")
+    st.markdown("<span class='muted'>Proyecto demostrativo: asistencia + participación + tests → nota (0–10)</span>", unsafe_allow_html=True)
 with c2:
-    st.markdown("<div class='pill muted'>Streamlit • Reglas IF • Demo didáctico</div>", unsafe_allow_html=True)
+    st.markdown("<div class='pill muted'>Streamlit • Reglas internas • Demo académica</div>", unsafe_allow_html=True)
 
 st.divider()
 
-# ---------- ENTRADAS ----------
-st.markdown("### Ingresá las variables")
-col_a, col_b, col_c = st.columns([1.2, 1.2, 1])
+# ---------------- CONTEXTO (modo proyecto de ciencia de datos) ----------------
+st.markdown("### 🧭 Introducción (formato proyecto)")
+col_l, col_r = st.columns([1.6, 1.1])
 
-with col_a:
-    total = st.slider("Total de clases del curso", min_value=10, max_value=40, value=30, step=1)
-with col_b:
-    asistidas = st.slider("Clases asistidas por el alumno", min_value=0, max_value=40, value=24, step=1)
-    if asistidas > total:
-        st.warning("Las clases asistidas no pueden superar el total. Ajustando al máximo permitido.")
-        asistidas = total
-with col_c:
+with col_l:
+    st.markdown("**Objetivo de investigación**")
+    st.write(
+        "- Estimar de manera rápida una **nota final (0–10)** usando señales simples del cursado.\n"
+        "- Proveer una **validación operativa** para simulaciones y seguimiento académico."
+    )
+
+    st.markdown("**Origen de la fuente de datos**")
+    st.write(
+        "- Parámetros declarados por cátedra/gestión académica.\n"
+        "- Sin datos sensibles de estudiantes; este demo no usa históricos reales.\n"
+        "- El total de clases se fija en **16** por cohorte estándar."
+    )
+
+    st.markdown("**Desarrollo del modelo**")
+    st.write(
+        "- En esta fase usamos una **heurística determinística** (reglas internas) para validar criterios.\n"
+        "- La lógica combina **asistencia (sobre 16 clases)**, **participación** y **tests completos (0–5)**.\n"
+        "- En producción podría reemplazarse por un **modelo estadístico/ML** con datos reales."
+    )
+
+with col_r:
+    st.markdown("**Consideraciones**")
+    st.write(
+        "- El resultado es **orientativo** para decisiones operativas.\n"
+        "- Se prioriza la **interpretabilidad** y la **simplicidad**.\n"
+        "- La UI busca uso docente y comunicación con dirección."
+    )
+    st.markdown("**Alcance de esta app**")
+    st.write(
+        "- Brinda un **interactivo** para experimentar escenarios.\n"
+        "- No persiste datos ni identifica alumnos."
+    )
+
+st.divider()
+
+# ---------------- INTERACTIVO ----------------
+st.markdown("### ⚙️ Interactivo")
+TOTAL_CLASES = 16  # Fijo
+
+ci1, ci2, ci3, ci4 = st.columns([1, 1, 1, 1])
+with ci1:
+    st.metric("Total de clases (fijo)", TOTAL_CLASES)
+with ci2:
+    tests_completos = st.slider("Cantidad de tests completos (0–5)", min_value=0, max_value=5, value=3, step=1)
+with ci3:
+    asistidas = st.slider("Clases asistidas por el alumno (0–16)", min_value=0, max_value=TOTAL_CLASES, value=12, step=1)
+with ci4:
     participacion = st.selectbox("Participación", ["Nula", "Media", "Alta", "Muy alta"], index=1)
 
-asistencia_rate = asistidas / total if total > 0 else 0.0
-st.markdown(f"**Asistencia efectiva:** {asistidas}/{total} → {asistencia_rate:.1%}")
+asistencia_rate = asistidas / TOTAL_CLASES if TOTAL_CLASES > 0 else 0.0
+st.caption(f"📝 Asistencia efectiva: {asistidas}/{TOTAL_CLASES} · {asistencia_rate:.1%} — Tests completos: {tests_completos}/5 — Participación: {participacion}")
 
 st.divider()
 
-# ---------- LÓGICA DE NEGOCIO (IFs) ----------
-# Regla base por asistencia
-# (Podés ajustar estos tramos y puntajes fácilmente)
+# ---------------- LÓGICA INTERNA (NO VISIBLE) ----------------
+# Base por asistencia
 if asistencia_rate >= 0.9:
     base = 8.5
 elif asistencia_rate >= 0.8:
@@ -78,78 +126,63 @@ elif asistencia_rate >= 0.5:
 else:
     base = 3.5
 
-# Ajuste por participación
+# Bonus por participación
 if participacion == "Muy alta":
-    bonus = 1.5
+    bonus_part = 1.5
 elif participacion == "Alta":
-    bonus = 1.0
+    bonus_part = 1.0
 elif participacion == "Media":
-    bonus = 0.5
-else:  # Nula
-    bonus = 0.0
+    bonus_part = 0.5
+else:
+    bonus_part = 0.0
 
-nota_predicha = max(0.0, min(10.0, base + bonus))
+# Bonus por tests completos (lineal simple 0..1.5)
+bonus_tests = tests_completos * 0.3  # 5 tests -> +1.5
 
-# ---------- SALIDA ----------
-m1, m2 = st.columns([1.3, 1])
-with m1:
+nota_pred = max(0.0, min(10.0, base + bonus_part + bonus_tests))
+
+# ---------------- SALIDA ----------------
+o1, o2 = st.columns([1.3, 1])
+with o1:
     st.markdown("<div class='metric-card'>", unsafe_allow_html=True)
     st.markdown("#### Predicción de nota")
-    st.markdown(f"<div class='big-number'>{nota_predicha:.1f}</div>", unsafe_allow_html=True)
+    st.markdown(f"<div class='big-number'>{nota_pred:.1f}</div>", unsafe_allow_html=True)
 
-    if nota_predicha >= 6.0:
-        status_class, status_txt = "good", "APROBADO"
-    elif nota_predicha >= 5.0:
-        status_class, status_txt = "warn", "LÍMITE (recuperatorio/ajustes)"
+    if nota_pred >= 6.0:
+        cls, txt = "good", "APROBADO"
+    elif nota_pred >= 5.0:
+        cls, txt = "warn", "LÍMITE (recuperatorio/ajustes)"
     else:
-        status_class, status_txt = "bad", "DESAPROBADO"
-    st.markdown(f"<div class='pill {status_class}'>{status_txt}</div>", unsafe_allow_html=True)
-
-    st.progress(min(1.0, nota_predicha/10.0))
+        cls, txt = "bad", "DESAPROBADO"
+    st.markdown(f"<div class='pill {cls}'>{txt}</div>", unsafe_allow_html=True)
+    st.progress(min(1.0, nota_pred/10.0))
     st.markdown("</div>", unsafe_allow_html=True)
 
-with m2:
+with o2:
     st.markdown("<div class='metric-card'>", unsafe_allow_html=True)
-    st.markdown("#### Señales (reglas aplicadas)")
-    # Feedback por asistencia
+    st.markdown("#### Lectura rápida")
+    # Mensajes de contexto sin revelar reglas exactas
     if asistencia_rate >= 0.85:
-        st.markdown("• ✅ **Asistencia alta**: base de nota favorable.")
+        st.markdown("• ✅ **Asistencia** en rango alto: buen soporte para la calificación final.")
     elif asistencia_rate >= 0.65:
-        st.markdown("• ⚠️ **Asistencia media**: impacto moderado en la base.")
+        st.markdown("• ⚠️ **Asistencia** moderada: conviene sostener o mejorar presencia.")
     else:
-        st.markdown("• ❌ **Asistencia baja**: principal riesgo para aprobar.")
-    # Feedback por participación
+        st.markdown("• ❌ **Asistencia** baja: principal factor de riesgo.")
     if participacion in ["Alta", "Muy alta"]:
-        st.markdown("• ✅ **Participación elevada**: suma puntos significativos.")
+        st.markdown("• ✅ **Participación** consistente: contribuye positivamente al resultado.")
     elif participacion == "Media":
-        st.markdown("• ⚠️ **Participación media**: mejora leve; hay margen.")
+        st.markdown("• ⚠️ **Participación** intermedia: hay margen para sumar.")
     else:
-        st.markdown("• ❌ **Participación nula**: no agrega al puntaje.")
+        st.markdown("• ❌ **Participación** nula: no aporta al desempeño.")
+    if tests_completos >= 4:
+        st.markdown("• ✅ **Tests** casi completos: refuerzan el aprendizaje.")
+    elif tests_completos >= 2:
+        st.markdown("• ⚠️ **Tests** parciales: completar evaluaciones podría elevar la nota.")
+    else:
+        st.markdown("• ❌ **Tests** escasos: completar instancias mejora la proyección.")
     st.markdown("</div>", unsafe_allow_html=True)
 
-st.divider()
+st.markdown("<br>", unsafe_allow_html=True)
+st.caption("⚠️ Demo educativa: resultados orientativos para validación rápida. En producción, sustituir por datos reales y/o un modelo estadístico.")
 
-# ---------- DETALLE DE LAS REGLAS ----------
-with st.expander("🔎 Ver detalle de reglas IF"):
-    st.write("""
-**Asistencia → base de nota**
-- ≥ 90% → 8.5
-- 80–89% → 7.5
-- 70–79% → 6.5
-- 60–69% → 5.5
-- 50–59% → 4.5
-- < 50%   → 3.5
-
-**Participación → bonus**
-- Muy alta → +1.5
-- Alta     → +1.0
-- Media    → +0.5
-- Nula     → +0.0
-
-**Nota final:** `nota = clamp(base + bonus, 0, 10)`  
-*(Clamp = acotar entre 0 y 10)*
-    """)
-
-# ---------- FOOTER ----------
-st.caption("⚠️ Demo educativa: reglas simples para validación rápida. Ajustá tramos/bonos según tu rúbrica.")
 
