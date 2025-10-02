@@ -1,151 +1,155 @@
+# app_streamlit_ugr_notas_if.py
+# -------------------------------------------------------------
+# Streamlit demo (sin ML): Predicción simple de nota (0-10)
+# basado en asistencia y participación con reglas IF.
+# Autor: ChatGPT para Joa — 2025
+# -------------------------------------------------------------
+
 import streamlit as st
-import pandas as pd
-import math
-from pathlib import Path
 
-# Set the title and favicon that appear in the Browser's tab bar.
+# ---------- CONFIG ----------
 st.set_page_config(
-    page_title='GDP dashboard',
-    page_icon=':earth_americas:', # This is an emoji shortcode. Could be a URL too.
+    page_title="UGR • Predicción de Nota (Reglas IF)",
+    page_icon="🎓",
+    layout="wide",
 )
 
-# -----------------------------------------------------------------------------
-# Declare some useful functions.
+# ---------- ESTILO SENCILLO ----------
+st.markdown("""
+<style>
+  .metric-card {
+    border-radius: 16px; padding: 18px 22px;
+    border: 1px solid rgba(120,120,120,0.15);
+    box-shadow: 0 2px 10px rgba(30,30,30,0.05);
+    background: #ffffff;
+  }
+  .pill { display:inline-block; padding:4px 10px; border-radius:999px;
+          border:1px solid rgba(120,120,120,0.25); font-size:.9rem; margin-left:8px; }
+  .good { background:#ECFDF5; color:#065F46; border-color:#A7F3D0; }
+  .warn { background:#FEF3C7; color:#92400E; border-color:#FDE68A; }
+  .bad  { background:#FEE2E2; color:#991B1B; border-color:#FCA5A5; }
+  .big-number { font-size: 3rem; font-weight: 800; line-height: 1; }
+  .muted { color:#6B7280; }
+</style>
+""", unsafe_allow_html=True)
 
-@st.cache_data
-def get_gdp_data():
-    """Grab GDP data from a CSV file.
+# ---------- ENCABEZADO ----------
+c1, c2 = st.columns([3, 2])
+with c1:
+    st.markdown("## 🎓 Predicción de Nota — UGR (Reglas IF)")
+    st.markdown("<span class='muted'>Validación simple: asistencia + participación → nota (0–10)</span>", unsafe_allow_html=True)
+with c2:
+    st.markdown("<div class='pill muted'>Streamlit • Reglas IF • Demo didáctico</div>", unsafe_allow_html=True)
 
-    This uses caching to avoid having to read the file every time. If we were
-    reading from an HTTP endpoint instead of a file, it's a good idea to set
-    a maximum age to the cache with the TTL argument: @st.cache_data(ttl='1d')
-    """
+st.divider()
 
-    # Instead of a CSV on disk, you could read from an HTTP endpoint here too.
-    DATA_FILENAME = Path(__file__).parent/'data/gdp_data.csv'
-    raw_gdp_df = pd.read_csv(DATA_FILENAME)
+# ---------- ENTRADAS ----------
+st.markdown("### Ingresá las variables")
+col_a, col_b, col_c = st.columns([1.2, 1.2, 1])
 
-    MIN_YEAR = 1960
-    MAX_YEAR = 2022
+with col_a:
+    total = st.slider("Total de clases del curso", min_value=10, max_value=40, value=30, step=1)
+with col_b:
+    asistidas = st.slider("Clases asistidas por el alumno", min_value=0, max_value=40, value=24, step=1)
+    if asistidas > total:
+        st.warning("Las clases asistidas no pueden superar el total. Ajustando al máximo permitido.")
+        asistidas = total
+with col_c:
+    participacion = st.selectbox("Participación", ["Nula", "Media", "Alta", "Muy alta"], index=1)
 
-    # The data above has columns like:
-    # - Country Name
-    # - Country Code
-    # - [Stuff I don't care about]
-    # - GDP for 1960
-    # - GDP for 1961
-    # - GDP for 1962
-    # - ...
-    # - GDP for 2022
-    #
-    # ...but I want this instead:
-    # - Country Name
-    # - Country Code
-    # - Year
-    # - GDP
-    #
-    # So let's pivot all those year-columns into two: Year and GDP
-    gdp_df = raw_gdp_df.melt(
-        ['Country Code'],
-        [str(x) for x in range(MIN_YEAR, MAX_YEAR + 1)],
-        'Year',
-        'GDP',
-    )
+asistencia_rate = asistidas / total if total > 0 else 0.0
+st.markdown(f"**Asistencia efectiva:** {asistidas}/{total} → {asistencia_rate:.1%}")
 
-    # Convert years from string to integers
-    gdp_df['Year'] = pd.to_numeric(gdp_df['Year'])
+st.divider()
 
-    return gdp_df
+# ---------- LÓGICA DE NEGOCIO (IFs) ----------
+# Regla base por asistencia
+# (Podés ajustar estos tramos y puntajes fácilmente)
+if asistencia_rate >= 0.9:
+    base = 8.5
+elif asistencia_rate >= 0.8:
+    base = 7.5
+elif asistencia_rate >= 0.7:
+    base = 6.5
+elif asistencia_rate >= 0.6:
+    base = 5.5
+elif asistencia_rate >= 0.5:
+    base = 4.5
+else:
+    base = 3.5
 
-gdp_df = get_gdp_data()
+# Ajuste por participación
+if participacion == "Muy alta":
+    bonus = 1.5
+elif participacion == "Alta":
+    bonus = 1.0
+elif participacion == "Media":
+    bonus = 0.5
+else:  # Nula
+    bonus = 0.0
 
-# -----------------------------------------------------------------------------
-# Draw the actual page
+nota_predicha = max(0.0, min(10.0, base + bonus))
 
-# Set the title that appears at the top of the page.
-'''
-# :earth_americas: GDP dashboard
+# ---------- SALIDA ----------
+m1, m2 = st.columns([1.3, 1])
+with m1:
+    st.markdown("<div class='metric-card'>", unsafe_allow_html=True)
+    st.markdown("#### Predicción de nota")
+    st.markdown(f"<div class='big-number'>{nota_predicha:.1f}</div>", unsafe_allow_html=True)
 
-Browse GDP data from the [World Bank Open Data](https://data.worldbank.org/) website. As you'll
-notice, the data only goes to 2022 right now, and datapoints for certain years are often missing.
-But it's otherwise a great (and did I mention _free_?) source of data.
-'''
+    if nota_predicha >= 6.0:
+        status_class, status_txt = "good", "APROBADO"
+    elif nota_predicha >= 5.0:
+        status_class, status_txt = "warn", "LÍMITE (recuperatorio/ajustes)"
+    else:
+        status_class, status_txt = "bad", "DESAPROBADO"
+    st.markdown(f"<div class='pill {status_class}'>{status_txt}</div>", unsafe_allow_html=True)
 
-# Add some spacing
-''
-''
+    st.progress(min(1.0, nota_predicha/10.0))
+    st.markdown("</div>", unsafe_allow_html=True)
 
-min_value = gdp_df['Year'].min()
-max_value = gdp_df['Year'].max()
+with m2:
+    st.markdown("<div class='metric-card'>", unsafe_allow_html=True)
+    st.markdown("#### Señales (reglas aplicadas)")
+    # Feedback por asistencia
+    if asistencia_rate >= 0.85:
+        st.markdown("• ✅ **Asistencia alta**: base de nota favorable.")
+    elif asistencia_rate >= 0.65:
+        st.markdown("• ⚠️ **Asistencia media**: impacto moderado en la base.")
+    else:
+        st.markdown("• ❌ **Asistencia baja**: principal riesgo para aprobar.")
+    # Feedback por participación
+    if participacion in ["Alta", "Muy alta"]:
+        st.markdown("• ✅ **Participación elevada**: suma puntos significativos.")
+    elif participacion == "Media":
+        st.markdown("• ⚠️ **Participación media**: mejora leve; hay margen.")
+    else:
+        st.markdown("• ❌ **Participación nula**: no agrega al puntaje.")
+    st.markdown("</div>", unsafe_allow_html=True)
 
-from_year, to_year = st.slider(
-    'Which years are you interested in?',
-    min_value=min_value,
-    max_value=max_value,
-    value=[min_value, max_value])
+st.divider()
 
-countries = gdp_df['Country Code'].unique()
+# ---------- DETALLE DE LAS REGLAS ----------
+with st.expander("🔎 Ver detalle de reglas IF"):
+    st.write("""
+**Asistencia → base de nota**
+- ≥ 90% → 8.5
+- 80–89% → 7.5
+- 70–79% → 6.5
+- 60–69% → 5.5
+- 50–59% → 4.5
+- < 50%   → 3.5
 
-if not len(countries):
-    st.warning("Select at least one country")
+**Participación → bonus**
+- Muy alta → +1.5
+- Alta     → +1.0
+- Media    → +0.5
+- Nula     → +0.0
 
-selected_countries = st.multiselect(
-    'Which countries would you like to view?',
-    countries,
-    ['DEU', 'FRA', 'GBR', 'BRA', 'MEX', 'JPN'])
+**Nota final:** `nota = clamp(base + bonus, 0, 10)`  
+*(Clamp = acotar entre 0 y 10)*
+    """)
 
-''
-''
-''
+# ---------- FOOTER ----------
+st.caption("⚠️ Demo educativa: reglas simples para validación rápida. Ajustá tramos/bonos según tu rúbrica.")
 
-# Filter the data
-filtered_gdp_df = gdp_df[
-    (gdp_df['Country Code'].isin(selected_countries))
-    & (gdp_df['Year'] <= to_year)
-    & (from_year <= gdp_df['Year'])
-]
-
-st.header('GDP over time', divider='gray')
-
-''
-
-st.line_chart(
-    filtered_gdp_df,
-    x='Year',
-    y='GDP',
-    color='Country Code',
-)
-
-''
-''
-
-
-first_year = gdp_df[gdp_df['Year'] == from_year]
-last_year = gdp_df[gdp_df['Year'] == to_year]
-
-st.header(f'GDP in {to_year}', divider='gray')
-
-''
-
-cols = st.columns(4)
-
-for i, country in enumerate(selected_countries):
-    col = cols[i % len(cols)]
-
-    with col:
-        first_gdp = first_year[first_year['Country Code'] == country]['GDP'].iat[0] / 1000000000
-        last_gdp = last_year[last_year['Country Code'] == country]['GDP'].iat[0] / 1000000000
-
-        if math.isnan(first_gdp):
-            growth = 'n/a'
-            delta_color = 'off'
-        else:
-            growth = f'{last_gdp / first_gdp:,.2f}x'
-            delta_color = 'normal'
-
-        st.metric(
-            label=f'{country} GDP',
-            value=f'{last_gdp:,.0f}B',
-            delta=growth,
-            delta_color=delta_color
-        )
