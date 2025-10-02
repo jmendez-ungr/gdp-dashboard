@@ -187,24 +187,22 @@ st.markdown("### 📊 Distribución de notas del curso")
 
 import numpy as np
 import pandas as pd
-import matplotlib.pyplot as plt
 
-# Ejemplo: generamos notas ficticias de 100 alumnos
+# Generamos datos ficticios de un curso (100 alumnos)
 np.random.seed(42)
 notas_curso = np.clip(np.random.normal(loc=6, scale=1.5, size=100), 0, 10)
 
-# Histograma
-fig, ax = plt.subplots(figsize=(7,4))
-ax.hist(notas_curso, bins=10, color="#1f77b4", edgecolor="white", alpha=0.85)
-ax.set_title("Distribución de notas (N=100)", fontsize=14, fontweight="bold")
-ax.set_xlabel("Nota")
-ax.set_ylabel("Cantidad de alumnos")
-ax.axvline(notas_curso.mean(), color="red", linestyle="--", label=f"Media = {notas_curso.mean():.1f}")
-ax.legend()
+# Histograma simple con pandas
+bins = np.linspace(0, 10, 11)  # 10 intervalos de 0–10
+conteo, bordes = np.histogram(notas_curso, bins=bins)
+df_hist = pd.DataFrame({
+    "Intervalo": [f"{bordes[i]:.1f}-{bordes[i+1]:.1f}" for i in range(len(bordes)-1)],
+    "Cantidad": conteo
+}).set_index("Intervalo")
 
-st.pyplot(fig)
+st.bar_chart(df_hist)
 
-
-st.subheader("Comparativa de escenarios (¿qué pasaría si...?)")
-st.bar_chart(df_esc)  # Streamlit interno
+# Mostrar métricas adicionales
+st.caption(f"📌 Muestra: {len(notas_curso)} alumnos · Media: {notas_curso.mean():.1f} · "
+           f"Máx: {notas_curso.max():.1f} · Mín: {notas_curso.min():.1f}")
 
