@@ -185,49 +185,71 @@ with col_info:
 # ---------------- ----- GRAFICO ----- ----------------
 st.markdown("### 📈 ----- GRAFICO -----")
 
+import numpy as np
+import pandas as pd
+import plotly.express as px
+
 # (1) Distribución de notas simuladas y comparación vs. media y tu valor
-#     - Simulamos escenarios cercanos al actual para visualizar contexto.
 rng = np.random.default_rng(7)
 muestras = 400
-# variamos asistencia +/- 4 clases dentro de [0,16]
+
+# Variaciones alrededor de los valores actuales
 asis_sim = np.clip(asistidas + rng.integers(-4, 5, size=muestras), 0, TOTAL_CLASES)
 rate_sim = asis_sim / TOTAL_CLASES
-# variamos tests +/-2 dentro de [0,5]
 tests_sim = np.clip(tests_completos + rng.integers(-2, 3, size=muestras), 0, 5)
-# variamos participación con una distribución simple alrededor de la actual
 niveles = ["Nula", "Media", "Alta", "Muy alta"]
 p_idx = niveles.index(participacion)
 choices = [niveles[np.clip(p_idx + d, 0, len(niveles)-1)] for d in rng.integers(-1, 2, size=muestras)]
+
+def predecir_nota(asistencia_rate: float, participacion: str, tests: int) -> float:
+    if asistencia_rate >= 0.9:
+        base = 8.5
+    elif asistencia_rate >= 0.8:
+        base = 7.5
+    elif asistencia_rate >= 0.7:
+        base = 6.5
+    elif asistencia_rate >= 0.6:
+        base = 5.5
+    elif asistencia_rate >= 0.5:
+        base = 4.5
+    else:
+        base = 3.5
+
+    if participacion == "Muy alta":
+        bonus_part = 1.5
+    elif participacion == "Alta":
+        bonus_part = 1.0
+    elif participacion == "Media":
+        bonus_part = 0.5
+    else:
+        bonus_part = 0.0
+
+    bonus_tests = tests * 0.3
+    return float(max(0.0, min(10.0, base + bonus_part + bonus_tests)))
 
 notas_sim = np.array([predecir_nota(rate_sim[i], choices[i], int(tests_sim[i])) for i in range(muestras)])
 media = float(notas_sim.mean())
 
 fig1 = px.histogram(
     x=notas_sim, nbins=20,
-    title="Distribución de notas simuladas (escenarios cercanos)",
+    title="Distribución de notas simuladas",
     labels={"x": "Nota"},
     opacity=0.85
 )
-fig1.add_vline(x=media, line_dash="dash", annotation_text=f"Media = {media:.1f}", annotation_position="top left")
-fig1.add_vline(x=nota_pred, line_color="green", annotation_text=f"Tu nota = {nota_pred:.1f}", annotation_position="top right")
-fig1.update_layout(margin=dict(l=10, r=10, t=60, b=10))
+fig1.add_vline(x=media, line_dash="dash", annotation_text=f"Media = {media:.1f}")
+fig1.add_vline(x=nota_pred, line_color="green", annotation_text=f"Tu nota = {nota_pred:.1f}")
 st.plotly_chart(fig1, use_container_width=True)
 
 # (2) Comparativa de escenarios potenciales (qué pasaría si...)
-escenarios = []
-escenarios.append(("Actual", nota_pred))
-# mantener todo igual pero con 5 tests
-escenarios.append(("Completa 5 tests", predecir_nota(asistencia_rate, participacion, 5)))
-# subir asistencia al 80% si fuera menor (≈13/16)
-asis80 = max(asistidas, 13)
-escenarios.append(("Asistencia ≥80%", predecir_nota(asis80/TOTAL_CLASES, participacion, tests_completos)))
-# aumentar participación un nivel (si aplica)
-p_next = niveles[min(p_idx+1, len(niveles)-1)]
-escenarios.append((f"Participación → {p_next}", predecir_nota(asistencia_rate, p_next, tests_completos)))
+escenarios = [
+    ("Actual", nota_pred),
+    ("Completa 5 tests", predecir_nota(asistencia_rate, participacion, 5)),
+    ("Asistencia ≥80%", predecir_nota(max(asistidas, 13)/TOTAL_CLASES, participacion, tests_completos)),
+    (f"Participación → {niveles[min(p_idx+1, len(niveles)-1)]}", predecir_nota(asistencia_rate, niveles[min(p_idx+1, len(niveles)-1)], tests_completos))
+]
 
 df_esc = pd.DataFrame(escenarios, columns=["Escenario", "Nota"])
 fig2 = px.bar(df_esc, x="Escenario", y="Nota", title="Comparativa de escenarios (¿qué pasaría si...?)",
               range_y=[0,10], text="Nota")
 fig2.update_traces(texttemplate='%{text:.1f}', textposition='outside')
-fig2.update_layout(margin=dict(l=10, r=10, t=60, b=10))
 st.plotly_chart(fig2, use_container_width=True)
